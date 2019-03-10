@@ -8,9 +8,9 @@ $(PKG)_CHECKSUM := 216900d5c0af9017bb8f76b0ad23f0ac53cf7fc618cf04b40d989bd99b088
 $(PKG)_SUBDIR   := $(PKG)-$($(PKG)_VERSION)
 $(PKG)_FILE     := $(PKG)-$($(PKG)_VERSION).tar.bz2
 $(PKG)_URL      := https://ffmpeg.org/releases/$($(PKG)_FILE)
-$(PKG)_DEPS     := gcc bzip2 gnutls lame libass libbluray libbs2b libcaca \
-                   libvpx opencore-amr opus sdl speex theora vidstab \
-                   vo-amrwbenc vorbis x264 xvidcore yasm zlib
+$(PKG)_DEPS     := gcc bzip2 \
+                   libvpx sdl speex \
+                   vorbis yasm zlib
 
 # DO NOT ADD fdk-aac OR openssl SUPPORT.
 # Although they are free softwares, their licenses are not compatible with
@@ -44,24 +44,54 @@ define $(PKG)_BUILD
         --enable-gpl \
         --enable-version3 \
         --extra-libs='-mconsole' \
-        --enable-avisynth \
-        --enable-gnutls \
-        --enable-libass \
-        --enable-libbluray \
-        --enable-libbs2b \
-        --enable-libcaca \
-        --enable-libmp3lame \
-        --enable-libopencore-amrnb \
-        --enable-libopencore-amrwb \
-        --enable-libopus \
         --enable-libspeex \
-        --enable-libtheora \
-        --enable-libvidstab \
-        --enable-libvo-amrwbenc \
         --enable-libvorbis \
         --enable-libvpx \
-        --enable-libx264 \
-        --enable-libxvid
+        --disable-everything \
+        --enable-muxer=webm \
+        --enable-encoder=libvorbis \
+        --enable-encoder=libvpx_vp8 \
+        --enable-demuxer=aiff \
+        --enable-demuxer=mp3 \
+        --enable-demuxer=mpegps \
+        --enable-demuxer=mpegts \
+        --enable-demuxer=mpegtsraw \
+        --enable-demuxer=mpegvideo \
+        --enable-demuxer=ogg \
+        --enable-demuxer=wav \
+        --enable-parser=mpegaudio \
+        --enable-parser=mpegvideo \
+        --enable-decoder=adpcm_ima_wav \
+        --enable-decoder=adpcm_ms \
+        --enable-decoder=gsm \
+        --enable-decoder=gsm_ms \
+        --enable-decoder=mp1 \
+        --enable-decoder=mp1float \
+        --enable-decoder=mp2 \
+        --enable-decoder=mp2float \
+        --enable-decoder=mp3 \
+        --enable-decoder=mp3float \
+        --enable-decoder=mpeg1video \
+        --enable-decoder=pcm_alaw \
+        --enable-decoder=pcm_f32be \
+        --enable-decoder=pcm_f32le \
+        --enable-decoder=pcm_f64be \
+        --enable-decoder=pcm_f64le \
+        --enable-decoder=pcm_mulaw \
+        --enable-decoder=pcm_s8 \
+        --enable-decoder=pcm_s8_planar \
+        --enable-decoder=pcm_s16be \
+        --enable-decoder=pcm_s16le \
+        --enable-decoder=pcm_s16le_planar \
+        --enable-decoder=pcm_s24be \
+        --enable-decoder=pcm_s24le \
+        --enable-decoder=pcm_s32be \
+        --enable-decoder=pcm_s32le \
+        --enable-decoder=pcm_u8 \
+        --enable-decoder=theora \
+        --enable-decoder=vorbis \
+        --enable-decoder=vp8 \
+        --enable-protocol=file
     $(MAKE) -C '$(1)' -j '$(JOBS)'
     $(MAKE) -C '$(1)' -j 1 install
 endef
