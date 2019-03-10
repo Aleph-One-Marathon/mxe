@@ -1,7 +1,7 @@
 # This file is part of MXE. See LICENSE.md for licensing information.
 
 PKG             := libvpx
-$(PKG)_WEBSITE  := https://code.google.com/p/webm/
+$(PKG)_WEBSITE  := https://www.webmproject.org/code/
 $(PKG)_DESCR    := vpx
 $(PKG)_IGNORE   :=
 $(PKG)_VERSION  := 1.5.0
@@ -9,10 +9,10 @@ $(PKG)_CHECKSUM := 306d67908625675f8e188d37a81fbfafdf5068b09d9aa52702b6fbe601c76
 $(PKG)_SUBDIR   := $(PKG)-$($(PKG)_VERSION)
 $(PKG)_FILE     := $(PKG)-$($(PKG)_VERSION).tar.bz2
 $(PKG)_URL      := https://storage.googleapis.com/downloads.webmproject.org/releases/webm/$($(PKG)_FILE)
-$(PKG)_DEPS     := gcc pthreads yasm
+$(PKG)_DEPS     := cc pthreads yasm
 
 define $(PKG)_UPDATE
-    $(WGET) -q -O- 'http://downloads.webmproject.org/releases/webm/index.html' | \
+    $(WGET) -q -O- 'https://storage.googleapis.com/downloads.webmproject.org/releases/webm/index.html' | \
     $(SED) -n 's,.*libvpx-\([0-9][^>]*\)\.tar.*,\1,p' | \
     $(SORT) -Vr | \
     head -1

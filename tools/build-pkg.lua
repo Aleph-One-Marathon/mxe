@@ -6,10 +6,12 @@ This file is part of MXE. See LICENSE.md for licensing information.
 build-pkg, Build binary packages from MXE packages
 Instructions: http://pkg.mxe.cc
 
-Requirements: MXE, lua, fakeroot, dpkg-deb.
+Requirements (see bootstrapped build below for non-debian systems):
+    MXE (https://mxe.cc/#requirements-debian)
+    apt-get install lua5.1 fakeroot dpkg dpkg-dev
 Usage: lua tools/build-pkg.lua
-Packages are written to `*.tar.xz` files.
-Debian packages are written to `*.deb` files.
+Packages are written to `<codename>/*.tar.xz` files.
+Debian packages are written to `<codename>/*.deb` files.
 
 Build in directory /usr/lib/mxe
 This directory can not be changed in .deb packages.
@@ -17,6 +19,15 @@ This directory can not be changed in .deb packages.
 To prevent build-pkg from creating deb packages,
 set environment variable MXE_BUILD_PKG_NO_DEBS to 1
 In this case fakeroot and dpkg-deb are not needed.
+
+To do a dry run without actually building any packages,
+set environment variable MXE_BUILD_DRY_RUN to any value
+Packages will be downloaded, but builds will be skipped.
+
+To override the codename detection of `lsb_release -sc`, set
+MXE_BUILD_PKG_CODENAME. This sets the output directory and name
+mangling for the pool directory in the apt repo. Could be used to
+create lowest-common-glibc based versions.
 
 To switch off the second pass, set
 MXE_BUILD_PKG_NO_SECOND_PASS to 1.
@@ -30,16 +41,45 @@ set environment variable MXE_BUILD_PKG_TARGETS to
 the list of targets separated by space.
 By default, all 4 major targets are built.
 
+To set list of MXE packages to build,
+set environment variable MXE_BUILD_PKG_PKGS to
+the list of packages separated by space. This is similar
+to a normal `make` invocation in that all dependencies
+will be built, so list just the packages you require.
+By default, all packages are built.
+
 The following error:
 > fakeroot, while creating message channels: Invalid argument
 > This may be due to a lack of SYSV IPC support.
 > fakeroot: error while starting the `faked' daemon.
 can be caused by leaked ipc resources originating in fakeroot.
 How to remove them: https://stackoverflow.com/a/4262545
+Alternatively, to switch off using fakeroot (e.g. inside docker),
+set MXE_BUILD_PKG_NO_FAKEROOT to 1.
+
+Bootstrapped build (non-debian systems building without
+deb pkgs to test print-deps-for-build-pkg, control files etc.):
+
+export MXE_DIR=`pwd` && \
+export BUILD=`$MXE_DIR/ext/config.guess` && \
+rm -rf $MXE_DIR/usr $MXE_DIR/log $MXE_DIR/mxe-* && \
+make -C $MXE_DIR lua \
+    MXE_TARGETS=$BUILD \
+    lua_TARGETS=$BUILD \
+    PREFIX=$MXE_DIR/usr.lua && \
+MXE_BUILD_PKG_CODENAME=trusty \
+MXE_BUILD_PKG_TARGETS="i686-w64-mingw32.static" \
+MXE_BUILD_PKG_PKGS=qt5 \
+MXE_BUILD_DRY_RUN=1 \
+MXE_BUILD_PKG_MAX_ITEMS= \
+MXE_BUILD_PKG_NO_DEBS=1 \
+MXE_BUILD_PKG_NO_SECOND_PASS=1 \
+$MXE_DIR/usr.lua/$BUILD/bin/lua $MXE_DIR/tools/build-pkg.lua
 ]]
 
 local max_items = tonumber(os.getenv('MXE_BUILD_PKG_MAX_ITEMS'))
 local no_debs = os.getenv('MXE_BUILD_PKG_NO_DEBS')
+local no_fakeroot = os.getenv('MXE_BUILD_PKG_NO_FAKEROOT')
 local no_second_pass = os.getenv('MXE_BUILD_PKG_NO_SECOND_PASS')
 local build_targets = os.getenv('MXE_BUILD_PKG_TARGETS')
 
@@ -59,9 +99,16 @@ local BLACKLIST = {
     '^usr/share/man/',
     '^usr/share/gcc',
     '^usr/share/gtk-doc',
-    '^usr/lib/nonetwork.so',
     '^usr/[^/]+/share/doc/',
     '^usr/[^/]+/share/info/',
+
+    -- usr/lib/nonetwork.so and
+    -- usr/x86_64-unknown-linux-gnu/lib/nonetwork.so
+    'lib/nonetwork.so',
+
+    -- https://github.com/mxe/mxe/issues/1886#issuecomment-331719282
+    'installed/.gitkeep',
+    'lib/.gitkeep',
 }
 
 local TARGETS = {
@@ -193,6 +240,13 @@ local function fileExists(name)
     end
 end
 
+local function fileSize(name)
+    local f = io.open(name, "r")
+    local size = f:seek("end")
+    io.close(f)
+    return size
+end
+
 local function isSymlink(name)
     return shell(("ls -l %q"):format(name)):sub(1, 1) == "l"
 end
@@ -299,7 +353,7 @@ end
 
 -- return items ordered in build order
 -- this means, if item depends on item2, then
--- item2 preceeds item1 in the list
+-- item2 precedes item1 in the list
 local function sortForBuild(items, item2deps)
     local n = #items
     local item2followers = transpose(item2deps)
@@ -673,8 +727,8 @@ end
 local function buildItem(item, item2deps, file2item, item2index, pass, prev_files)
     prepareTree(pass, item, item2deps, prev_files, item2index)
     local target, pkg = parseItem(item)
-    local cmd = '%s %s MXE_TARGETS=%s --jobs=1'
-    os.execute(cmd:format(tool 'make', pkg, target))
+    local cmd = '%s %s~%s MXE_TARGETS=%s --jobs=1'
+    os.execute(cmd:format(tool 'make', pkg, target, target))
     gitAdd()
     local new_files, changed_files = gitStatus(item, item2deps, file2item)
     if #new_files + #changed_files > 0 then
@@ -724,8 +778,9 @@ Version: %s
 Section: devel
 Priority: optional
 Architecture: %s%s
+Installed-Size: %d
 Maintainer: Boris Nagaev <bnagaev@gmail.com>
-Homepage: http://mxe.cc
+Homepage: https://mxe.cc/
 Description: %s
  MXE (M cross environment) is a Makefile that compiles
  a cross compiler and cross compiles many free libraries
@@ -752,12 +807,20 @@ local function debianControl(options)
         version,
         options.arch,
         deb_deps_str,
+        math.ceil(options.size_bytes / 1024),
         options.description1,
         options.description2
     )
 end
 
 local function makePackage(name, files, deps, ver, d1, d2, dst, recommends)
+    -- calculate size_bytes
+    local size_bytes = 0
+    for _, f in ipairs(files) do
+        local size = math.ceil(fileSize(f) / 4096) * 4096
+        size_bytes = size_bytes + size
+    end
+    -- dirname
     dst = dst or '.'
     local dirname = ('%s/%s_%s'):format(dst, name,
         protectVersion(ver))
@@ -782,6 +845,7 @@ local function makePackage(name, files, deps, ver, d1, d2, dst, recommends)
         arch = ARCH,
         deps = deps,
         recommends = recommends,
+        size_bytes = size_bytes,
         description1 = d1,
         description2 = d2,
     }
@@ -793,14 +857,18 @@ local function makePackage(name, files, deps, ver, d1, d2, dst, recommends)
         os.execute(('mkdir -p %s/DEBIAN'):format(dirname))
         -- use tar to copy files with paths
         local cmd3 = '%s -C %s -xf %s'
-        cmd3 = 'fakeroot -s deb.fakeroot ' .. cmd3
+        if not no_fakeroot then
+            cmd3 = 'fakeroot -s deb.fakeroot ' .. cmd3
+        end
         os.execute(cmd3:format(tool 'tar', usr, tar_name))
         -- make DEBIAN/control file
         local control_fname = dirname .. '/DEBIAN/control'
         writeFile(control_fname, control_text)
         -- make .deb file
         local cmd4 = 'dpkg-deb -Zxz -b %s'
-        cmd4 = 'fakeroot -i deb.fakeroot ' .. cmd4
+        if not no_fakeroot then
+            cmd4 = 'fakeroot -i deb.fakeroot ' .. cmd4
+        end
         os.execute(cmd4:format(dirname))
         -- cleanup
         os.execute(('rm -fr %s deb.fakeroot'):format(dirname))
@@ -810,7 +878,7 @@ end
 local D1 = "MXE package %s for %s"
 local D2 = "This package contains the files for MXE package %s"
 
-local function makeDeb(item, files, deps, ver)
+local function makeDeb(item, files, deps, ver, codename)
     local target, pkg = parseItem(item)
     local deb_pkg = nameToDebian(item)
     local d1 = D1:format(pkg, target)
@@ -819,7 +887,7 @@ local function makeDeb(item, files, deps, ver)
     for _, dep in ipairs(deps) do
         table.insert(deb_deps, nameToDebian(dep))
     end
-    makePackage(deb_pkg, files, deb_deps, ver, d1, d2)
+    makePackage(deb_pkg, files, deb_deps, ver, d1, d2, codename)
 end
 
 local function findForeignInstalls(item, files)
@@ -889,10 +957,6 @@ local function progressPrinter(items)
     return printer
 end
 
-local function isEmpty(files)
-    return #files == 1
-end
-
 -- build all packages, save filelist to list file
 -- prev_files is passed only to second pass.
 local function buildPackages(items, item2deps, pass, prev_item2files)
@@ -945,41 +1009,13 @@ local function buildPackages(items, item2deps, pass, prev_item2files)
     return unbroken, item2files
 end
 
-local function makeDebs(items, item2deps, item2ver, item2files)
-    -- start from building non-empty packages
-    local to_build = {}
+local function makeDebs(items, item2deps, item2ver, item2files, codename)
     for _, item in ipairs(items) do
+        local deps = assert(item2deps[item], item)
+        local ver = assert(item2ver[item], item)
         local files = assert(item2files[item], item)
-        if not isEmpty(files) then
-            table.insert(to_build, item)
-        end
+        makeDeb(item, files, deps, ver, codename)
     end
-    local built = {}
-    repeat
-        local missing_deps_set = {}
-        for _, item in ipairs(to_build) do
-            local deps = assert(item2deps[item], item)
-            local ver = assert(item2ver[item], item)
-            local files = assert(item2files[item], item)
-            for _, dep in ipairs(deps) do
-                local dep_files = item2files[dep]
-                if isEmpty(dep_files) then
-                    log('Item %s depends on ' ..
-                        'empty item %s', item, dep)
-                    missing_deps_set[dep] = true
-                end
-            end
-            makeDeb(item, files, deps, ver)
-            built[item] = true
-        end
-        -- empty packages built to satisfy non-empty
-        to_build = {}
-        for item in pairs(missing_deps_set) do
-            if not built[item] then
-                table.insert(to_build, item)
-            end
-        end
-    until #to_build == 0
 end
 
 local function getMxeVersion()
@@ -994,9 +1030,8 @@ local MXE_REQUIREMENTS_DESCRIPTION2 =
  Other MXE packages depend on this package.]]
 
 local function makeMxeRequirementsPackage(release)
-    os.execute(('mkdir -p %s'):format(release))
     local name = 'mxe-requirements'
-    local ver = getMxeVersion() .. release
+    local ver = getMxeVersion() .. '-' .. release
     -- MXE build requirements should not be strict dependencies here
     -- See https://github.com/mxe/mxe/issues/1537
     local deps = {}
@@ -1006,7 +1041,7 @@ local function makeMxeRequirementsPackage(release)
         'gperf', 'intltool', 'libffi-dev', 'libtool',
         'libltdl-dev', 'libssl-dev', 'libxml-parser-perl',
         'make', 'openssl', 'patch', 'perl', 'p7zip-full',
-        'pkg-config', 'python', 'ruby', 'scons', 'sed',
+        'pkg-config', 'python', 'ruby', 'sed',
         'unzip', 'wget', 'xz-utils',
         'g++-multilib', 'libc6-dev-i386',
     }
@@ -1029,25 +1064,27 @@ local MXE_SOURCE_DESCRIPTION2 =
 [[This package contains MXE source files.
  Other MXE packages depend on this package.]]
 
-local function makeMxeSourcePackage()
+local function makeMxeSourcePackage(codename)
     local name = 'mxe-source'
-    local ver = getMxeVersion()
+    local ver = getMxeVersion() .. '-' .. codename
     -- dependencies
     local deps = {}
     local files = {
-        'LICENSE.md',
-        'Makefile',
-        'patch.mk',
-        'README.md',
         'docs',
         'ext',
-        'src',
+        'LICENSE.md',
+        'Makefile',
+        'mxe.github.mk',
+        'mxe.patch.mk',
+        'mxe.updates.mk',
         'plugins',
+        'README.md',
+        'src',
         'tools',
     }
     local d1 = "MXE source"
     local d2 = MXE_SOURCE_DESCRIPTION2
-    makePackage(name, files, deps, ver, d1, d2)
+    makePackage(name, files, deps, ver, d1, d2, codename)
 end
 
 local function downloadPackages()
@@ -1064,7 +1101,12 @@ local function downloadPackages()
     error('downloading failed')
 end
 
+
 local function main()
+    local codename = os.getenv('MXE_BUILD_PKG_CODENAME')
+        or trim(shell('(lsb_release -sc 2>/dev/null || uname -s) | tr [:upper:] [:lower:]'))
+    assert(codename ~= '')
+    log("Building for: %s", codename)
     assert(not io.open('usr/.git'), 'Remove usr/')
     local MXE_DIR_EXPECTED = '/usr/lib/mxe'
     if MXE_DIR ~= MXE_DIR_EXPECTED then
@@ -1072,7 +1114,7 @@ local function main()
             MXE_DIR, MXE_DIR_EXPECTED)
     end
     gitInit()
-    assert(execute(("%s check-requirements MXE_TARGETS=%q"):format(
+    assert(execute(("%s check-requirements nonet-lib print-git-oneline MXE_TARGETS=%q"):format(
         tool 'make', table.concat(TARGETS, ' '))))
     if not max_items then
         downloadPackages()
@@ -1097,12 +1139,10 @@ local function main()
         makeItem2Index(build_list),
         'first'
     )
-    makeDebs(unbroken, item2deps, item2ver, item2files)
-    if not no_debs then
-        makeMxeRequirementsPackage('wheezy')
-        makeMxeRequirementsPackage('jessie')
-    end
-    makeMxeSourcePackage()
+    os.execute(('mkdir -p %s'):format(codename))
+    makeDebs(unbroken, item2deps, item2ver, item2files, codename)
+    makeMxeRequirementsPackage(codename)
+    makeMxeSourcePackage(codename)
     if not no_second_pass then
         local unbroken_second = buildPackages(
             build_list, item2deps, 'second', item2files

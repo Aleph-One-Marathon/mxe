@@ -3,12 +3,12 @@
 PKG             := json-c
 $(PKG)_WEBSITE  := https://github.com/json-c/json-c/wiki
 $(PKG)_IGNORE   :=
-$(PKG)_VERSION  := 0.12
-$(PKG)_CHECKSUM := 6fd6d2311d610b279e1bcdd5c6d4f699700159d3e0786de8306af7b4bc94fb35
+$(PKG)_VERSION  := 0.13.1
+$(PKG)_CHECKSUM := 94a26340c0785fcff4f46ff38609cf84ebcd670df0c8efd75d039cc951d80132
 $(PKG)_SUBDIR   := $(PKG)-$($(PKG)_VERSION)
 $(PKG)_FILE     := $(PKG)-$($(PKG)_VERSION)-nodoc.tar.gz
 $(PKG)_URL      := https://s3.amazonaws.com/$(PKG)_releases/releases/$($(PKG)_FILE)
-$(PKG)_DEPS     := gcc
+$(PKG)_DEPS     := cc
 
 define $(PKG)_UPDATE
     $(WGET) -q -O- 'https://s3.amazonaws.com/json-c_releases' | \
@@ -26,7 +26,7 @@ define $(PKG)_BUILD
     $(MAKE) -C '$(1)' -j '$(JOBS)' install $(MXE_REMOVE_CRUFT)
 
     '$(TARGET)-gcc' \
-        -W -Wall -Werror -ansi -pedantic \
+        -W -Wall -Werror -pedantic \
         '$(TEST_FILE)' -o '$(PREFIX)/$(TARGET)/bin/test-json-c.exe' \
         `'$(TARGET)-pkg-config' json-c --cflags --libs`
 endef

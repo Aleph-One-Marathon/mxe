@@ -1,16 +1,13 @@
 # This file is part of MXE. See LICENSE.md for licensing information.
+
 PKG             := qtxlsxwriter
-$(PKG)_WEBSITE  := https://github.com/dbzhang800/QtXlsxWriter/
+$(PKG)_WEBSITE  := https://github.com/VSRonin/QtXlsxWriter/
 $(PKG)_DESCR    := QtXlsxWriter
 $(PKG)_IGNORE   :=
-$(PKG)_VERSION  := 6895d8ba6c3a80768c98539445b124654801e8dd
-$(PKG)_CHECKSUM := fdf6a7c81e1b8f222770471158b067d3aa49dd2de426bd066b346f2c10bebfb9
-$(PKG)_SUBDIR   := QtXlsxWriter-$($(PKG)_VERSION)
-$(PKG)_FILE     := $(PKG)-$($(PKG)_VERSION).tar.gz
-$(PKG)_URL      := https://github.com/VSRonin/QtXlsxWriter/archive/$($(PKG)_VERSION).tar.gz
-$(PKG)_DEPS     := gcc qtbase
-
-$(PKG)_UPDATE    = $(call MXE_GET_GITHUB_SHA, VSRonin/QtXlsxWriter, master)
+$(PKG)_VERSION  := 5b685b5
+$(PKG)_CHECKSUM := 5f0abd0a63d69b119bac8e4df98484476ec707f8d395ed9bd4c59c59e817b2f2
+$(PKG)_GH_CONF  := VSRonin/QtXlsxWriter/branches/master
+$(PKG)_DEPS     := cc qtbase
 
 define $(PKG)_BUILD
     cd '$(1)' && '$(PREFIX)/$(TARGET)/qt5/bin/qmake'

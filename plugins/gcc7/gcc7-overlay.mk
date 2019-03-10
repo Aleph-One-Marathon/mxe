@@ -14,11 +14,19 @@ $(PKG)_CHECKSUM := 412538bb65c799ac98e17e8cfcdacbb257a57362acfaaff254b0fcae97012
 $(PKG)_SUBDIR   := $(PKG)-$($(PKG)_VERSION)
 $(PKG)_FILE     := $(PKG)-$($(PKG)_VERSION).tar.bz2
 $(PKG)_URL      := http://isl.gforge.inria.fr/$($(PKG)_FILE)
-$(PKG)_URL_2    := ftp://gcc.gnu.org/pub/gcc/infrastructure/$($(PKG)_FILE)
+$(PKG)_URL_2    := https://gcc.gnu.org/pub/gcc/infrastructure/$($(PKG)_FILE)
 
 PKG             := gcc
-$(PKG)_VERSION  := 7.1.0
-$(PKG)_CHECKSUM := 8a8136c235f64c6fef69cac0d73a46a1a09bb250776a050aec8f9fc880bebc17
+$(PKG)_VERSION  := 7.4.0
+$(PKG)_CHECKSUM := eddde28d04f334aec1604456e536416549e9b1aa137fc69204e65eb0c009fe51
 $(PKG)_SUBDIR   := gcc-$($(PKG)_VERSION)
-$(PKG)_FILE     := gcc-$($(PKG)_VERSION).tar.bz2
+$(PKG)_FILE     := gcc-$($(PKG)_VERSION).tar.xz
 $(PKG)_URL      := https://ftp.gnu.org/gnu/gcc/gcc-$($(PKG)_VERSION)/$($(PKG)_FILE)
+$(PKG)_URL_2    := https://www.mirrorservice.org/sites/sourceware.org/pub/gcc/releases/gcc-$($(PKG)_VERSION)/$($(PKG)_FILE)
+$(PKG)_PATCHES  := $(dir $(lastword $(MAKEFILE_LIST)))/gcc7.patch
+
+# set these in respective makefiles when gcc7 becomes default
+# and leave them blank for gcc5 plugin
+libssh_EXTRA_WARNINGS = -Wno-error=implicit-fallthrough
+gtkimageview_EXTRA_WARNINGS = -Wno-error=misleading-indentation
+guile_EXTRA_WARNINGS = -Wno-error=misleading-indentation

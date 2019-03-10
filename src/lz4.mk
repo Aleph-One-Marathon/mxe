@@ -4,10 +4,10 @@ PKG             := lz4
 $(PKG)_WEBSITE  := https://github.com/$(PKG)/$(PKG)
 $(PKG)_DESCR    := lossless compression algorithm optimized for speed
 $(PKG)_IGNORE   :=
-$(PKG)_VERSION  := 1.7.5
-$(PKG)_CHECKSUM := 0190cacd63022ccb86f44fa5041dc6c3804407ad61550ca21c382827319e7e7e
-$(PKG)_GH_CONF  := lz4/lz4,v
-$(PKG)_DEPS     := gcc
+$(PKG)_VERSION  := 1.8.3
+$(PKG)_CHECKSUM := 33af5936ac06536805f9745e0b6d61da606a1f8b4cc5c04dd3cbaca3b9b4fc43
+$(PKG)_GH_CONF  := lz4/lz4/tags,v
+$(PKG)_DEPS     := cc
 
 define $(PKG)_BUILD
     # build and install the library

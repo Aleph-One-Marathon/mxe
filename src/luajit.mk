@@ -10,7 +10,7 @@ $(PKG)_CHECKSUM := 620fa4eb12375021bef6e4f237cbd2dd5d49e56beb414bee052c746beef18
 $(PKG)_SUBDIR   := LuaJIT-$($(PKG)_VERSION)
 $(PKG)_FILE     := $($(PKG)_SUBDIR).tar.gz
 $(PKG)_URL      := https://luajit.org/download/$($(PKG)_FILE)
-$(PKG)_DEPS     := gcc dlfcn-win32
+$(PKG)_DEPS     := cc dlfcn-win32
 $(PKG)_DEPS_$(BUILD) :=
 
 define $(PKG)_BUILD
@@ -34,6 +34,11 @@ endef
 # gcc -m64 is only available on 64-bit machines
 ifeq (,$(findstring 64,$(BUILD)))
     $(PKG)_BUILD_x86_64-w64-mingw32 =
+endif
+
+# darwin no longer supports multi-lib
+ifeq ($(findstring x86_64-apple-darwin,$(BUILD)),x86_64-apple-darwin)
+    $(PKG)_BUILD_i686-w64-mingw32 =
 endif
 
 $(PKG)_BUILD_SHARED =

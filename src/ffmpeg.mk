@@ -3,12 +3,12 @@
 PKG             := ffmpeg
 $(PKG)_WEBSITE  := https://ffmpeg.org/
 $(PKG)_IGNORE   :=
-$(PKG)_VERSION  := 3.3.2
-$(PKG)_CHECKSUM := 216900d5c0af9017bb8f76b0ad23f0ac53cf7fc618cf04b40d989bd99b088e6a
+$(PKG)_VERSION  := 4.1
+$(PKG)_CHECKSUM := b684fb43244a5c4caae652af9022ed5d85ce15210835bce054a33fb26033a1a5
 $(PKG)_SUBDIR   := $(PKG)-$($(PKG)_VERSION)
 $(PKG)_FILE     := $(PKG)-$($(PKG)_VERSION).tar.bz2
 $(PKG)_URL      := https://ffmpeg.org/releases/$($(PKG)_FILE)
-$(PKG)_DEPS     := gcc bzip2 \
+$(PKG)_DEPS     := cc bzip2 \
                    libvpx sdl speex \
                    vorbis yasm zlib
 

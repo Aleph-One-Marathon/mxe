@@ -1,18 +1,17 @@
 # This file is part of MXE. See LICENSE.md for licensing information.
 
 PKG             := gdal
-$(PKG)_WEBSITE  := http://www.gdal.org/
+$(PKG)_WEBSITE  := https://www.gdal.org/
 $(PKG)_DESCR    := GDAL
 $(PKG)_IGNORE   :=
-$(PKG)_VERSION  := 2.1.3
-$(PKG)_CHECKSUM := ae6a0a0dc6eb45a981a46db27e3dfe16c644fcf04732557e2cb315776974074a
+$(PKG)_VERSION  := 2.2.4
+$(PKG)_CHECKSUM := 441eb1d1acb35238ca43a1a0a649493fc91fdcbab231d0747e9d462eea192278
 $(PKG)_SUBDIR   := gdal-$($(PKG)_VERSION)
-$(PKG)_FILE     := gdal-$($(PKG)_VERSION).tar.gz
-$(PKG)_URL      := http://download.osgeo.org/gdal/$($(PKG)_VERSION)/$($(PKG)_FILE)
-$(PKG)_URL_2    := ftp://ftp.remotesensing.org/gdal/$($(PKG)_VERSION)/$($(PKG)_FILE)
-$(PKG)_DEPS     := gcc armadillo curl expat geos giflib gta hdf4 hdf5 \
+$(PKG)_FILE     := gdal-$($(PKG)_VERSION).tar.xz
+$(PKG)_URL      := https://download.osgeo.org/gdal/$($(PKG)_VERSION)/$($(PKG)_FILE)
+$(PKG)_DEPS     := cc armadillo curl expat geos giflib gta hdf4 hdf5 \
                    jpeg json-c libgeotiff libmysqlclient libpng libxml2 \
-                   netcdf openjpeg postgresql proj sqlite tiff zlib
+                   netcdf openjpeg postgresql proj spatialite sqlite tiff zlib
 
 define $(PKG)_UPDATE
     $(WGET) -q -O- 'https://trac.osgeo.org/gdal/wiki/DownloadSource' | \
@@ -60,7 +59,6 @@ define $(PKG)_BUILD
         --with-oci=no \
         --with-odbc=no \
         --with-ogdi=no \
-        --with-ogr \
         --with-openjpeg='$(PREFIX)/$(TARGET)' \
         --with-pam \
         --with-pcidsk=no \
@@ -69,15 +67,15 @@ define $(PKG)_BUILD
         --with-php=no \
         --with-png='$(PREFIX)/$(TARGET)' \
         --with-python=no \
-        --with-ruby=no \
         --with-sde=no \
-        --with-spatialite=no \
+        --with-spatialite=yes \
         --with-sqlite3='$(PREFIX)/$(TARGET)' \
         --with-threads=no \
         --with-xerces=no \
         --with-xml2='$(PREFIX)/$(TARGET)/bin/xml2-config' \
+        --with-pg='$(PREFIX)/$(TARGET)/bin/pg_config' \
         CXXFLAGS='-D_WIN32_WINNT=0x0600' \
-        LIBS="-ljpeg -lsecur32 -lportablexdr `'$(TARGET)-pkg-config' --libs openssl libtiff-4`"
+        LIBS="-ljpeg -lsecur32 -lportablexdr `'$(TARGET)-pkg-config' --libs openssl libtiff-4 spatialite freexl armadillo`"
 
     $(MAKE) -C '$(1)'       -j '$(JOBS)' lib-target
     # gdal doesn't have an install-strip target

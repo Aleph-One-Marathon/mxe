@@ -4,10 +4,10 @@ PKG             := jasper
 $(PKG)_WEBSITE  := https://www.ece.uvic.ca/~mdadams/jasper/
 $(PKG)_DESCR    := JasPer
 $(PKG)_IGNORE   :=
-$(PKG)_VERSION  := 2.0.13
-$(PKG)_CHECKSUM := b50413b41bfc82ae419298b41eadcde1aa31f362fb9dc2ac089e5cbc19f60c24
-$(PKG)_GH_CONF  := mdadams/jasper, version-
-$(PKG)_DEPS     := gcc jpeg
+$(PKG)_VERSION  := 2.0.14
+$(PKG)_CHECKSUM := 85266eea728f8b14365db9eaf1edc7be4c348704e562bb05095b9a077cf1a97b
+$(PKG)_GH_CONF  := mdadams/jasper/tags, version-
+$(PKG)_DEPS     := cc jpeg
 
 define $(PKG)_BUILD
     cd '$(BUILD_DIR)' && $(TARGET)-cmake '$(SOURCE_DIR)' \

@@ -4,10 +4,14 @@ PKG             := vmime
 $(PKG)_WEBSITE  := https://www.vmime.org/
 $(PKG)_DESCR    := VMime
 $(PKG)_IGNORE   :=
-$(PKG)_VERSION  := f61efd2
-$(PKG)_CHECKSUM := 758f5b5c71a4ff62d6ec6bdc8f950a4dd3b2819996fdbca2c70d4c325b30aced
-$(PKG)_GH_CONF  := kisli/vmime/master
-$(PKG)_DEPS     := gcc gnutls libgsasl libiconv pthreads zlib
+$(PKG)_VERSION  := dad5b4a
+$(PKG)_CHECKSUM := b4266a39f0008024a730cf50f28e1c514908a847812d445d64469ac837c0aea4
+$(PKG)_GH_CONF  := kisli/vmime/branches/master
+$(PKG)_DEPS     := cc gnutls libgsasl libiconv pthreads zlib
+
+# see plugins/examples/openssl1.0 for example of enabling openssl 1.0.x
+# support (see https://github.com/kisli/vmime/issues/146 for v1.1.x)
+$(PKG)_TLS_LIB  := gnutls
 
 define $(PKG)_BUILD
     # The following hint is probably needed for ICU:
@@ -25,9 +29,7 @@ define $(PKG)_BUILD
         -DVMIME_BUILD_DOCUMENTATION=OFF \
         -DCMAKE_MODULE_PATH='$(1)/cmake' \
         -DVMIME_CHARSETCONV_LIB=iconv \
-        -DVMIME_TLS_SUPPORT_LIB=gnutls \
-        -DVMIME_SHARED_PTR_USE_CXX=ON \
-        -DCXX11_COMPILER_FLAGS=ON \
+        -DVMIME_TLS_SUPPORT_LIB=$($(PKG)_TLS_LIB) \
         -C '$(PWD)/src/vmime-TryRunResults.cmake' \
         .
 
