@@ -1,3 +1,9 @@
+# MXE (Aleph One downstream)
+
+This fork patches zziplib and ffmpeg for optimal use within Aleph One. See the [Developer Notes](https://github.com/Aleph-One-Marathon/alephone/wiki/Developer-Notes#compiling-on-windows) for instructions on building Aleph One for Windows.
+
+Original documentation follows.
+
 # MXE (M cross environment)
 
 [![License][license-badge]][license-page]
