@@ -12,9 +12,8 @@ $(PKG)_URL      := https://download.gnome.org/sources/glibmm/$(call SHORT_PKG_VE
 $(PKG)_DEPS     := cc glib libsigc++
 
 define $(PKG)_UPDATE
-    $(WGET) -q -O- 'https://git.gnome.org/browse/glibmm/refs/tags' | \
-    grep '<a href=' | \
-    $(SED) -n 's,.*<a[^>]*>\([0-9]*\.[0-9]*[02468]\.[^<]*\)<.*,\1,p' | \
+    $(WGET) -q -O- 'https://gitlab.gnome.org/GNOME/glibmm/tags' | \
+    $(SED) -n "s,.*<a [^>]\+>v\?\([0-9]\+\.[0-9.]\+\)<.*,\1,p" | \
     $(SORT) -Vr | \
     head -1
 endef
@@ -23,6 +22,7 @@ define $(PKG)_BUILD
     cd '$(1)' && ./configure \
         $(MXE_CONFIGURE_OPTS) \
         CXX='$(TARGET)-g++' \
+        CXXFLAGS='-Wno-deprecated-declarations -Wno-deprecated' \
         PKG_CONFIG='$(PREFIX)/bin/$(TARGET)-pkg-config' \
         GLIB_COMPILE_SCHEMAS='$(PREFIX)/$(TARGET)/bin/glib-compile-schemas' \
         $(shell [ `uname -s` == Darwin ] && echo "PERL=/usr/bin/perl") \

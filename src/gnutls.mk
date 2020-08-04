@@ -3,25 +3,24 @@
 PKG             := gnutls
 $(PKG)_WEBSITE  := https://www.gnu.org/software/gnutls/
 $(PKG)_DESCR    := GnuTLS
-$(PKG)_VERSION  := 3.6.6
-$(PKG)_CHECKSUM := bb9acab8af2ac430edf45faaaa4ed2c51f86e57cb57689be6701aceef4732ca7
+$(PKG)_VERSION  := 3.6.14
+$(PKG)_CHECKSUM := 5630751adec7025b8ef955af4d141d00d252a985769f51b4059e5affa3d39d63
 $(PKG)_SUBDIR   := gnutls-$($(PKG)_VERSION)
 $(PKG)_FILE     := gnutls-$($(PKG)_VERSION).tar.xz
 $(PKG)_URL      := https://gnupg.org/ftp/gcrypt/gnutls/v3.6/$($(PKG)_FILE)
 $(PKG)_URL_2    := https://www.mirrorservice.org/sites/ftp.gnupg.org/gcrypt/gnutls/v3.5/$($(PKG)_FILE)
-$(PKG)_DEPS     := cc gettext gmp libgnurx libidn2 libunistring nettle zlib
+$(PKG)_DEPS     := cc gettext gmp libidn2 libtasn1 libunistring nettle zlib
 
 define $(PKG)_UPDATE
     $(WGET) -q -O- https://gnupg.org/ftp/gcrypt/gnutls/v3.6/ | \
-    $(SED) -n 's,.*gnutls-\([1-9]\+\.[0-9]\+.[0-9]\+\)\..*,\1,p' | \
+    $(SED) -n 's,.*gnutls-\([1-9]\+\(\.[0-9]\+\)\+\)\..*,\1,p' | \
     $(SORT) -V | \
     tail -1
 endef
 
 define $(PKG)_BUILD
-    # AI_ADDRCONFIG referenced by src/serv.c but not provided by mingw.
-    # Value taken from https://msdn.microsoft.com/library/windows/desktop/ms737530
-    cd '$(1)' && autoreconf -fi && ./configure \
+    cd '$(SOURCE_DIR)' && autoreconf -fi
+    cd '$(BUILD_DIR)' && '$(SOURCE_DIR)'/configure \
         $(MXE_CONFIGURE_OPTS) \
         --disable-rpath \
         --disable-nls \
@@ -29,14 +28,11 @@ define $(PKG)_BUILD
         --disable-doc \
         --disable-tests \
         --enable-local-libopts \
-        --with-included-libtasn1 \
-        --with-libregex-libs="-lgnurx" \
         --without-p11-kit \
         --disable-silent-rules \
-        CPPFLAGS='-DWINVER=0x0501 -DAI_ADDRCONFIG=0x0400 -DIPV6_V6ONLY=27' \
-        LIBS='-lws2_32' \
-        ac_cv_prog_AR='$(TARGET)-ar'
-    $(MAKE) -C '$(1)' -j '$(JOBS)' install
+        CFLAGS='-D_WIN32_WINNT=0x0600'
+    $(MAKE) -C '$(BUILD_DIR)' -j '$(JOBS)'
+    $(MAKE) -C '$(BUILD_DIR)' -j 1 install
 
     '$(TARGET)-gcc' \
         -W -Wall -Werror -ansi -pedantic \

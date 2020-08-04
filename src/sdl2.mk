@@ -4,8 +4,8 @@ PKG             := sdl2
 $(PKG)_WEBSITE  := https://www.libsdl.org/
 $(PKG)_DESCR    := SDL2
 $(PKG)_IGNORE   :=
-$(PKG)_VERSION  := 2.0.9
-$(PKG)_CHECKSUM := 255186dc676ecd0c1dbf10ec8a2cc5d6869b5079d8a38194c2aecdff54b324b1
+$(PKG)_VERSION  := 2.0.12
+$(PKG)_CHECKSUM := 349268f695c02efbc9b9148a70b85e58cefbbf704abd3e91be654db7f1e2c863
 $(PKG)_SUBDIR   := SDL2-$($(PKG)_VERSION)
 $(PKG)_FILE     := SDL2-$($(PKG)_VERSION).tar.gz
 $(PKG)_URL      := https://www.libsdl.org/release/$($(PKG)_FILE)
@@ -18,7 +18,7 @@ define $(PKG)_UPDATE
 endef
 
 define $(PKG)_BUILD
-    cd '$(1)' && aclocal -I acinclude && autoconf && ./configure \
+    cd '$(1)' && aclocal -I acinclude && autoconf && $(SHELL) ./configure \
         $(MXE_CONFIGURE_OPTS) \
         --enable-threads \
         --enable-directx \
@@ -27,8 +27,8 @@ define $(PKG)_BUILD
     $(SED) -i 's,defined(__MINGW64_VERSION_MAJOR),defined(__MINGW64_VERSION_MAJOR) \&\& defined(_WIN64),' '$(1)/include/SDL_cpuinfo.h'
     $(SED) -i 's,-XCClinker,,' '$(1)/sdl2.pc'
     $(SED) -i 's,-XCClinker,,' '$(1)/sdl2-config'
-    $(MAKE) -C '$(1)' -j '$(JOBS)'
-    $(MAKE) -C '$(1)' -j 1 install
+    $(MAKE) -C '$(1)' -j '$(JOBS)' SHELL=$(SHELL)
+    $(MAKE) -C '$(1)' -j 1 install SHELL=$(SHELL)
     ln -sf '$(PREFIX)/$(TARGET)/bin/sdl2-config' '$(PREFIX)/bin/$(TARGET)-sdl2-config'
 
     '$(TARGET)-gcc' \

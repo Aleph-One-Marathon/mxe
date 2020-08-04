@@ -19,11 +19,10 @@ DEFAULT_MAX_JOBS   := 6
 PRINTF_COL_1_WIDTH := 13
 SOURCEFORGE_MIRROR := downloads.sourceforge.net
 MXE_MIRROR         := https://mirror.mxe.cc/pkg
-PKG_MIRROR         := https://s3.amazonaws.com/mxe-pkg
+PKG_MIRROR         := https://mxe-pkg.s3.amazonaws.com
 PKG_CDN            := http://d1yihgixbnrglp.cloudfront.net
-GITLAB_BACKUP      := https://gitlab.com/starius/mxe-backup2/raw/master
 # reorder as required, ensuring final one is a http fallback
-MIRROR_SITES       := GITLAB_BACKUP MXE_MIRROR PKG_MIRROR PKG_CDN
+MIRROR_SITES       := MXE_MIRROR PKG_MIRROR PKG_CDN
 
 PWD        := $(shell pwd)
 SHELL      := bash
@@ -47,7 +46,7 @@ SED        := $(shell gsed --help >/dev/null 2>&1 && echo g)sed
 SORT       := $(shell gsort --help >/dev/null 2>&1 && echo g)sort
 DEFAULT_UA := $(shell wget --version | $(SED) -n 's,GNU \(Wget\) \([0-9.]*\).*,\1/\2,p')
 WGET_TOOL   = wget
-WGET        = $(WGET_TOOL) --user-agent='$(or $($(1)_UA),$(DEFAULT_UA))'
+WGET        = $(WGET_TOOL) --user-agent='$(or $($(1)_UA),$(DEFAULT_UA))' -t 2 --timeout=6
 
 REQUIREMENTS := autoconf automake autopoint bash bison bzip2 flex \
                 $(BUILD_CC) $(BUILD_CXX) gperf intltoolize $(LIBTOOL) \
@@ -209,6 +208,16 @@ define AUTOTOOLS_BUILD
     $(AUTOTOOLS_MAKE)
 endef
 
+define CMAKE_TEST
+    # test cmake
+    mkdir '$(BUILD_DIR).test-cmake'
+    cd '$(BUILD_DIR).test-cmake' && '$(TARGET)-cmake' \
+        -DPKG=$(PKG) \
+        -DPKG_VERSION=$($(PKG)_VERSION) \
+        '$(PWD)/src/cmake/test'
+    $(MAKE) -C '$(BUILD_DIR).test-cmake' -j 1 install
+endef
+
 # include github related functions
 include $(PWD)/mxe.github.mk
 
@@ -231,6 +240,7 @@ SHORT_PKG_VERSION = \
     $(word 1,$(subst ., ,$($(1)_VERSION))).$(word 2,$(subst ., ,$($(1)_VERSION)))
 
 UNPACK_ARCHIVE = \
+    $(if $(filter %.tar,     $(1)),tar xf  '$(1)', \
     $(if $(filter %.tgz,     $(1)),tar xzf '$(1)', \
     $(if $(filter %.tar.gz,  $(1)),tar xzf '$(1)', \
     $(if $(filter %.tar.Z,   $(1)),tar xzf '$(1)', \
@@ -243,7 +253,7 @@ UNPACK_ARCHIVE = \
     $(if $(filter %.7z,      $(1)),7za x '$(1)', \
     $(if $(filter %.zip,     $(1)),unzip -q '$(1)', \
     $(if $(filter %.deb,     $(1)),ar x '$(1)' && tar xf data.tar*, \
-    $(error Unknown archive format: $(1))))))))))))))
+    $(error Unknown archive format: $(1)))))))))))))))
 
 UNPACK_PKG_ARCHIVE = \
     $(call UNPACK_ARCHIVE,$(PKG_DIR)/$($(1)_FILE))
@@ -463,6 +473,9 @@ SCRIPT_PKG_TYPES := script
 # all pkgs have (implied) order-only dependencies on MXE_CONF_PKGS.
 MXE_CONF_PKGS := mxe-conf
 
+# dummy *.mk files (usually overrides for plugins)
+NON_PKG_BASENAMES := overrides
+
 # autotools/cmake are generally always required, but separate them
 # for the case of `make gcc` which should only build real deps.
 AUTOTOOLS_PKGS := $(filter-out $(MXE_CONF_PKGS) %autotools autoconf automake libtool, \
@@ -494,9 +507,9 @@ PKG_DEPS = \
                       $(filter $($($(DEP)_PKG)_TYPE),$(BUILD_PKG_TYPES))), \
                 $($(DEP)_TGT)/installed/$($(DEP)_PKG))))
 
-# order-only package deps unlikely to need target lookup
+# order-only package deps - needs target lookup for e.g. zstd native case
 PKG_OO_DEPS = \
-    $(foreach DEP,$($(PKG)_OO_DEPS), \
+    $(foreach DEP,$(value $(call LOOKUP_PKG_RULE,$(PKG),OO_DEPS,$(TARGET))), \
         $(if $(filter $(DEP),$(PKGS)), \
             $(if $(or $(value $(call LOOKUP_PKG_RULE,$(DEP),BUILD,$(TARGET))), \
                       $(filter $($(DEP)_TYPE),$(BUILD_PKG_TYPES))), \
@@ -516,11 +529,12 @@ PKG_ALL_DEPS = \
 
 # include files from MXE_PLUGIN_DIRS, set base filenames and `all-<plugin>` target
 PLUGIN_FILES := $(realpath $(wildcard $(addsuffix /*.mk,$(MXE_PLUGIN_DIRS))))
-PKGS         := $(sort $(basename $(notdir $(PLUGIN_FILES))))
+PKGS         := $(sort $(filter-out $(NON_PKG_BASENAMES),$(basename $(notdir $(PLUGIN_FILES)))))
 $(foreach FILE,$(PLUGIN_FILES),\
-    $(eval $(basename $(notdir $(FILE)))_MAKEFILE  ?= $(FILE)) \
-    $(eval $(basename $(notdir $(FILE)))_TEST_FILE ?= $(filter-out %.cmake,$(wildcard $(basename $(FILE))-test.*))) \
-    $(eval all-$(lastword $(call split,/,$(dir $(FILE)))): $(basename $(notdir $(FILE)))))
+    $(if $(filter-out $(NON_PKG_BASENAMES),$(basename $(notdir $(FILE)))), \
+        $(eval $(basename $(notdir $(FILE)))_MAKEFILE  ?= $(FILE)) \
+        $(eval $(basename $(notdir $(FILE)))_TEST_FILE ?= $(filter-out %.cmake,$(wildcard $(basename $(FILE))-test.*))) \
+        $(eval all-$(lastword $(call split,/,$(dir $(FILE)))): $(basename $(notdir $(FILE))))))
 include $(PLUGIN_FILES)
 
 # create target sets for PKG_TARGET_RULE loop to avoid creating empty rules
@@ -555,7 +569,7 @@ $(foreach TARGET,$(MXE_TARGETS),\
     $(eval $(TARGET)_UC_LIB_TYPE := $(if $(findstring shared,$(TARGET)),SHARED,STATIC)))
 
 # finds a package rule defintion
-RULE_TYPES := BUILD DEPS FILE MESSAGE URL
+RULE_TYPES := BUILD DEPS FILE MESSAGE OO_DEPS URL
 # by truncating the target elements then looking for STAIC|SHARED rules:
 #
 # foo_BUILD_i686-w64-mingw32.static.win32.dw2
