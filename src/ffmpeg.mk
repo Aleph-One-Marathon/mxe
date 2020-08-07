@@ -47,7 +47,11 @@ define $(PKG)_BUILD
         --enable-libspeex \
         --enable-libvorbis \
         --enable-libvpx \
-        --disable-everything \
+        --disable-decoders \
+        --disable-encoders \
+        --disable-demuxers \
+        --disable-muxers \
+        --disable-protocols \
         --enable-muxer=webm \
         --enable-encoder=libvorbis \
         --enable-encoder=libvpx_vp8 \
